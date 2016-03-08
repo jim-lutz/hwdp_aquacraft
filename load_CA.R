@@ -12,12 +12,23 @@ source("setup_wd.R")
 # load useful functions (probably don't need this.)
 source("functions.R")
 
-# load RASS data file
-# the age bins in this data set should be redone.
-fn_RASS_NBr <- paste0(wd_data,"RASS_DATA_NBr.csv")
-DT_RASS_NBr <- fread(fn_RASS_NBr)
-names(DT_RASS_NBr)
-str(DT_RASS_NBr)
+# load Aquacraft data files
+# path to directory
+wd_Aquacraft  <- "/home/jiml/HotWaterResearch/projects/CECHWT24/hot water calcs/draw patterns/Aquacraft/"  
+fn_AllCalEvents <- paste0(wd_Aquacraft,"AllCalEvents_2011.h.csv")
+DT_AllCalEvents <- fread(fn_AllCalEvents)
+# Read 2168699 rows and 9 (of 9) columns from 0.171 GB file in 00:00:11
+
+names(DT_AllCalEvents)
+# [1] "Keycode"   "SumAs"     "CountAs"   "StartTime" "Duration"  "Peak"      "Volume"    "Mode"      "ModeFreq" 
+
+str(DT_AllCalEvents)
+DT_AllCalEvents[1]
+#   Keycode SumAs CountAs       StartTime Duration  Peak Volume  Mode ModeFreq
+#1:    #INT  TEXT    TEXT SHORT_DATE_TIME     LONG FLOAT  FLOAT FLOAT     LONG
+
+# convert fields to correct format
+
 
 # rename some columns
 setnames(DT_RASS_NBr, c("People_.5", "People_6.18", "People_65.99", "People_Total"),
