@@ -3,6 +3,7 @@ fn_script = "mixtemp.R"
 # faucets, showers, clotheswashers, and baths
 
 # Jim Lutz "Wed Mar  9 19:39:12 2016"
+# "Thu Mar 10 04:25:17 2016"    check events with missing identifiers
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -77,15 +78,54 @@ DT_REUWS2_hots[, Volume := as.numeric(Volume)]
 DT_REUWS2_hots[, Mode := as.numeric(Mode)]
 
 # get timezone in StartTime
-DT_REUWS2_hots[,ST_tz:= str_sub(StartTime, start=-8, end = -6)]
+DT_REUWS2_hots[,StartTime.tz:= str_sub(StartTime, start=-8, end = -6)]
 
-unique(DT_REUWS2_hots$ST_tz)
+unique(DT_REUWS2_hots$StartTime.tz)
 # [1] "PDT" "PST"
 
+# so don't need to worry about time zones
 DT_REUWS2_hots[,ST_tz:= NULL]
 
 # change StartTime to a POSIXct date-time object
 DT_REUWS2_hots[,start.time := parse_date_time(StartTime,"%a %b %d %H:%M:%S  %Y", tz="America/Los Angeles")]
+
+# compare by meterID
+DT_REUWS2_hots[,list(nhouses=length(unique(Keycode))),by=meterID]
+#    meterID nhouses
+# 1:   mains      97
+# 2:     hot     103
+
+# get temperatures by house
+fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
+DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
+
+# Keep just the temperatures and Keycode
+names(DT_Combined_Hot_Water_Audit_Forms)
+DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 43, 44), with=FALSE]
+
+# shorten names
+setnames(DT_temps, 2:3, c( "T_cold","T_hot"))
+str(DT_temps)
+
+# get number out of temperatures
+DT_temps[,T_cold2:= str_extract(T_cold,"[0-9.]+")]
+DT_temps[!is.na(T_cold2),list(T_cold,T_cold2)]
+DT_temps[,T_hot2:= str_extract(T_hot,"[0-9.]+")]
+DT_temps[!is.na(T_hot2),list(T_hot,T_hot2)]
+
+# set temps with ~ to NA
+DT_temps[str_detect(T_cold,"~"),T_cold2:=NA]
+DT_temps[str_detect(T_hot,"~"),T_hot2:=NA]
+
+# keep only where both temperatures were measured
+DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,T_cold=T_cold2, T_hot=T_hot2) ]
+
+# make sure Keycodes match case
+sort(DT_temps$Keycode) # some have 'h' at end
+sort(unique(DT_REUWS2_hots$Keycode))
+DT_REUWS2_hots[Keycode=="13s103" | Keycode=="13S103", list(unique(Keycode), n=length(StartTime)), by=meterID ]
+
+=================================
 
 # find types of events
 DT_REUWS2_hots[,list(n=length(Keycode)),by=SumAs]
