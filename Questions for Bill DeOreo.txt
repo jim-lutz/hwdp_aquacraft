@@ -1,0 +1,5 @@
+Questions for Bill DeOreo
+
+2016-03-11
+"12S233" "12S606" "12S858" "13S214"  <- these Keycodes in tblHotTraces_REUWS2, 
+                                        but not tblMains_for_Hots

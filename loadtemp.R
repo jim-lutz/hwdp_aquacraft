@@ -7,6 +7,7 @@ fn_script = "loadtemp.R"
 # "Thu Mar 10 14:21:28 2016"    clean up Keycodes
 # "Thu Mar 10 20:11:29 2016"    drop missing categories, email from Bill DeOreo, Thu, 10 Mar 2016 16:07:48 -0700
 # "Fri Mar 11 08:25:40 2016"    rename to loadtemp.R, load, clean, summarize & store data
+# "Fri Mar 11 12:39:55 2016"    check why more hots than mains
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -131,18 +132,19 @@ DT_REUWS2_hots[SumAs==''& CountAs=='', list(n=length(start.time)), by=Keycode][o
 # no obvious pattern
 
 # drop when both categories are missing
+# "there are many events in the two databases that have no category assigned to them.  This should be ignored."
+# email Bill DeOreo, 03/10/2016 03:07 PM
 DT_events <- DT_REUWS2_hots[!(SumAs==''& CountAs==''), ]
 rm(DT_REUWS2_hots)
 
 sort(unique(DT_events$Keycode))
 # 103 Keycodes
 
-
 # get temperatures by house from Audit forms
 fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
 DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
 
-# Keep just Keycode, location, demographics, & temps
+# Keep Keycode, location, demographics, & temps
 names(DT_Combined_Hot_Water_Audit_Forms)
 DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
 
@@ -205,11 +207,26 @@ str(DT_temps)
 str(DT_events)
 #Classes ‘data.table’ and 'data.frame':	326536 obs. of  10 variables:
 
+# merge DT_temps & DT_events, only Keycode, keep all records to see which is missing from which
+DT_Keycodes <- merge(DT_temps[,list(Keycode, temps=TRUE)],DT_events[,list(Keycode, events=TRUE)], by="Keycode", all=TRUE)
+
+# summarize
+DT_Keycodes[, list(N.Keycodes=length(unique(Keycode))),by=c("temps","events")]
+#    temps events N.Keycodes
+# 1:    NA   TRUE         28
+# 2:  TRUE   TRUE         75
+# 3:  TRUE     NA          6
+
 # merge DT_temps & DT_events, keep only if in DT_temps
 DT_temp_events <- merge(DT_temps, DT_events, by = "Keycode")
 
 str(DT_temp_events)
 # Classes ‘data.table’ and 'data.frame':	248914 obs. of  18 variables:
+length(unique(DT_temp_events$Keycode))
+# [1] 75
+
+# save the DT_temp_events data.table for later processing
+save(DT_temp_events,file=paste0(wd_data,"DT_temp_events.Rdata"))
 
 # make summary table of draws and loads by type and meterID
 # The Sum-as field identifies every cycle of every use.  
@@ -236,10 +253,37 @@ DT_event.summary <- merge(DT_Ndraws.mains, DT_Ndraws.hot)
 DT_event.summary <- merge(DT_event.summary,DT_Nloads.mains)
 DT_event.summary <- merge(DT_event.summary,DT_Nloads.hot)
 
+DT_event.summary
+
 # save event summary table
 write.csv(DT_event.summary, file=paste0(wd_data,"event.summary.csv"),row.names = FALSE)
+#             type Ndraws.mains Ndraws.hot Nloads.mains Nloads.hot
+# 1:       Bathtub          127        141          127        141
+# 2: Clotheswasher         3451       1364          939        622
+# 3:    Dishwasher         1471       1545          452        475
+# 4:        Faucet        41251      40885        41251      40885
+# 5:          Leak        76199      61332        76199      61332
+# 6:         Other         4381       1410         4381       1410
+# 7:        Shower         1407       1604         1407       1604
+# 8:        Toilet        11688          1        11688          1
 
-!!# more hot events than mains events, check Keycodes and dates?
+# more hot events than mains events, check Keycodes and dates?
+
+# confirm same Keycodes hot & mains
+DT_temp_events[,list(N_Keycodes = length(unique(Keycode))),by=meterID]
+#    meterID N_Keycodes
+# 1:   mains         71
+# 2:     hot         75
+
+Keycode.hot <- sort(unique(DT_temp_events[meterID=="hot",]$Keycode)) 
+Keycode.mains <- sort(unique(DT_temp_events[meterID=="mains",]$Keycode))
+
+setdiff(Keycode.hot, Keycode.mains)
+# [1] "12S233" "12S606" "12S858" "13S214"  <- these Keycodes in hot, but not mains
+setdiff(Keycode.mains, Keycode.hot)
+# character(0)
+
+
 
 
 
