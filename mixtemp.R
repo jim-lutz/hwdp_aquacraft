@@ -5,6 +5,7 @@ fn_script = "mixtemp.R"
 # Jim Lutz "Wed Mar  9 19:39:12 2016"
 # "Thu Mar 10 04:25:17 2016"    check events with missing identifiers
 # "Thu Mar 10 14:21:28 2016"    clean up Keycodes
+# "Thu Mar 10 20:11:29 2016"    drop missing categories, email from Bill DeOreo, Thu, 10 Mar 2016 16:07:48 -0700
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -107,118 +108,6 @@ DT_REUWS2_hots[,list(nhouses=length(unique(Keycode))),by=meterID]
 # look at Keycode
 sort(unique(DT_REUWS2_hots$Keycode))
 
-
-# get temperatures by house
-fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
-DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
-
-# Keep just the temperatures and Keycode
-names(DT_Combined_Hot_Water_Audit_Forms)
-DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
-
-# shorten names
-names(DT_temps)
-setnames(DT_temps, 4:9, c("N_adults", "N_teens", "N_children", "N_infants", "T_cold","T_hot"))
-# [1] "Keycode"    "City"       "State"      "N_adults"   "N_teens"    "N_children" "N_infants"  "T_cold"     "T_hot"     
-
-
-# make sure Keycodes upper case
-DT_temps[,Keycode:=toupper(Keycode)]
-
-# drop trailing H and H2
-DT_temps[, Keycode2:=str_match(Keycode,"[0-9S]*")]
-
-DT_temps[, list(unique(Keycode2)), by=Keycode]
-
-DT_REUWS2_hots[grepl("TBD",Keycode), list(unique(Keycode)), by=Keycode]
-
-sort(unique(DT_temps$Keycode))
-
-# convert N_adults field to numbers
-DT_temps[,N_adults:=as.numeric(str_extract(N_adults,"[1-9]") )] # missing is NA
-
-# if N_adults is NA so are others
-DT_temps[is.na(N_adults), `:=` (N_teens=NA, N_children=NA, N_infants=NA)]
-
-# convert blanks to zeros
-DT_temps[N_teens=='',N_teens:='0']
-DT_temps[N_children=='',N_children:='0']
-DT_temps[N_infants=='',N_infants:='0']
-
-# convert to numeric
-DT_temps[, c("N_teens", "N_children", "N_infants") := 
-           list(as.numeric(N_teens), as.numeric(N_children), as.numeric(N_infants) )]
-DT_temps[,N_teens:=as.numeric(N_teens)]
-DT_temps[,N_children:=as.numeric(N_children)]
-DT_temps[,N_infants:=as.numeric(N_infants)]
-
-
-str(DT_temps)
-
-# get number out of temperatures
-DT_temps[,T_cold2:= str_extract(T_cold,"[0-9.]+")]
-DT_temps[!is.na(T_cold2),list(T_cold,T_cold2)]
-DT_temps[,T_hot2:= str_extract(T_hot,"[0-9.]+")]
-DT_temps[!is.na(T_hot2),list(T_hot,T_hot2)]
-
-# set temps with ~ to NA
-DT_temps[str_detect(T_cold,"~"),T_cold2:=NA]
-DT_temps[str_detect(T_hot,"~"),T_hot2:=NA]
-
-# keep only where both temperatures were measured
-DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,
-                                                            T_cold=as.numeric(T_cold2), T_hot=as.numeric(T_hot2),
-                                                            N_adults, N_teens, N_children, N_infants,
-                                                            City, State) 
-                     ]
-
-str(DT_temps)
-
-# make sure Keycodes upper case
-DT_temps[,Keycode:=toupper(Keycode)]
-
-# drop H 
-
-sort(unique(DT_REUWS2_hots$Keycode))
-DT_REUWS2_hots[Keycode=="13s103" | Keycode=="13S103", list(unique(Keycode), n=length(StartTime)), by=meterID ]
-
-
-
-=================================
-
-# find types of events
-DT_REUWS2_hots[,list(n=length(Keycode)),by=SumAs]
-# SumAs identifies every cycle of every use, email from Bill DeOreo, 2016-03-09
-#            SumAs      n
-# 1: Clotheswasher   7524
-# 2:    Dishwasher   4449
-# 3:        Faucet 116374
-# 4:    Irrigation    284
-# 5:          Leak 169824
-# 6:               289728
-# 7:        Shower   4426
-# 8:        Toilet  16069
-# 9:       Bathtub    479
-# 10:         Other   6711
-# 11:    Humidifier    390
-# 12:          Pool      6
-
-DT_REUWS2_hots[,list(n=length(Keycode)),by=CountAs]
-# CountAs is for counting the loads for dishwashers and clothes washers, email from Bill DeOreo, 2016-03-09
-#          CountAs      n
-# 1:               298375
-# 2: Clotheswasher   2096
-# 3:    Dishwasher   1230
-# 4:        Faucet 116374
-# 5:    Irrigation    284
-# 6:          Leak 169824
-# 7:        Shower   4426
-# 8:        Toilet  16069
-# 9:       Bathtub    479
-# 10:         Other   6711
-# 11:    Humidifier    390
-# 12:          Pool      6
-
 # see how the events match up
 with(DT_REUWS2_hots,table(SumAs, CountAs, useNA = "ifany"))
 #                CountAs
@@ -240,8 +129,100 @@ with(DT_REUWS2_hots,table(SumAs, CountAs, useNA = "ifany"))
 DT_REUWS2_hots[SumAs==''& CountAs=='', list(n=length(start.time)), by=Keycode][order(n)]
 # no obvious pattern
 
-????DT_REUWS2_hots[, list(n=length(start.time),nblanks=length((SumAs==''& CountAs==''))), by=Keycode][order(n)][Keycode=='12S465']
+# drop when both categories are missing
+DT_events <- DT_REUWS2_hots[!(SumAs==''& CountAs==''), ]
+rm(DT_REUWS2_hots)
 
+sort(unique(DT_events$Keycode))
+# 103 Keycodes
+
+
+# get temperatures by house from Audit forms
+fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
+DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
+
+# Keep just the temperatures and Keycode
+names(DT_Combined_Hot_Water_Audit_Forms)
+DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
+
+# shorten names
+names(DT_temps)
+setnames(DT_temps, 4:9, c("N_adults", "N_teens", "N_children", "N_infants", "T_cold","T_hot"))
+# [1] "Keycode"    "City"       "State"      "N_adults"   "N_teens"    "N_children" "N_infants"  "T_cold"     "T_hot"     
+
+
+# make sure Keycodes upper case
+DT_temps[,Keycode:=toupper(Keycode)]
+
+# drop trailing H and H2
+DT_temps[, Keycode2:=str_match(Keycode,"[0-9S]*")]
+
+DT_temps[, list(unique(Keycode2)), by=Keycode]
+
+# drop 12STBD
+DT_temps <- DT_temps[Keycode!='12STBD',]
+DT_temps[, Keycode:=Keycode2]
+DT_temps[, Keycode2:=NULL]
+
+sort(unique(DT_temps$Keycode))
+
+# convert N_adults field to numbers
+DT_temps[,N_adults:=as.numeric(str_extract(N_adults,"[1-9]") )] # missing is NA
+
+# if N_adults is NA so are others
+DT_temps[is.na(N_adults), `:=` (N_teens=NA, N_children=NA, N_infants=NA)]
+
+# convert blanks to zeros
+DT_temps[N_teens=='',N_teens:='0']
+DT_temps[N_children=='',N_children:='0']
+DT_temps[N_infants=='',N_infants:='0']
+
+# convert to numeric
+DT_temps[, c("N_teens", "N_children", "N_infants") := 
+           list(as.numeric(N_teens), as.numeric(N_children), as.numeric(N_infants) )]
+
+str(DT_temps)
+
+# get number out of temperatures
+DT_temps[,T_cold2:= str_extract(T_cold,"[0-9.]+")]
+DT_temps[!is.na(T_cold2),list(T_cold,T_cold2)]
+DT_temps[,T_hot2:= str_extract(T_hot,"[0-9.]+")]
+DT_temps[!is.na(T_hot2),list(T_hot,T_hot2)]
+
+# set temps with ~ to NA
+DT_temps[str_detect(T_cold,"~"),T_cold2:=NA]
+DT_temps[str_detect(T_hot,"~"),T_hot2:=NA]
+
+# keep only where both temperatures were measured
+DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,
+                                                            T_cold=as.numeric(T_cold2), T_hot=as.numeric(T_hot2),
+                                                            N_adults, N_teens, N_children, N_infants,
+                                                            City, State) 
+                     ]
+
+str(DT_temps)
+# Classes ‘data.table’ and 'data.frame':	81 obs. of  9 variables:
+str(DT_events)
+#Classes ‘data.table’ and 'data.frame':	326536 obs. of  10 variables:
+
+# merge DT_temps & DT_events, keep only if in DT_temps
+DT <- merge(DT_temps, DT_events, by = "Keycode")
+
+str(DT)
+# Classes ‘data.table’ and 'data.frame':	248914 obs. of  18 variables:
+  
+DT_test <-DT_events[ SumAs=="Dishwasher", list(Keycode, start.time, Duration, Peak, Volume, Mode, meterID )][order(Keycode,start.time),]
+
+DT_test[, start.time.lag := shift(start.time), by=Keycode]
+
+DT_test[, start.time.diff := as.numeric( start.time - start.time.lag)]
+
+summary(DT_test$start.time.diff)
+head(sort(DT_test$start.time.diff, decreasing = TRUE),n=20)
+qplot(data=DT_test,x=start.time.diff, log="x")
+str(DT_test)
+
+=============================
 
 
 # see how many houses
