@@ -4,6 +4,7 @@ fn_script = "mixtemp.R"
 
 # Jim Lutz "Wed Mar  9 19:39:12 2016"
 # "Thu Mar 10 04:25:17 2016"    check events with missing identifiers
+# "Thu Mar 10 14:21:28 2016"    clean up Keycodes
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -64,6 +65,9 @@ DT_HotTraces_REUWS2[,meterID:="hot"]
 # concatenate the data.tables
 DT_REUWS2_hots <- rbind(DT_Mains_for_Hots,DT_HotTraces_REUWS2)
 
+# remove original large data.tables
+rm(DT_Mains_for_Hots,DT_HotTraces_REUWS2)
+
 names(DT_REUWS2_hots)
 #[1] "Keycode"   "SumAs"     "CountAs"   "StartTime" "Duration"  "Peak"      "Volume"    "Mode"      "meterID"  
 
@@ -84,10 +88,15 @@ unique(DT_REUWS2_hots$StartTime.tz)
 # [1] "PDT" "PST"
 
 # so don't need to worry about time zones
-DT_REUWS2_hots[,ST_tz:= NULL]
+DT_REUWS2_hots[,StartTime.tz:= NULL]
 
 # change StartTime to a POSIXct date-time object
 DT_REUWS2_hots[,start.time := parse_date_time(StartTime,"%a %b %d %H:%M:%S  %Y", tz="America/Los Angeles")]
+
+# upper case Keycode
+DT_REUWS2_hots[, Keycode := toupper(Keycode)]
+
+str(DT_REUWS2_hots)
 
 # compare by meterID
 DT_REUWS2_hots[,list(nhouses=length(unique(Keycode))),by=meterID]
@@ -95,16 +104,55 @@ DT_REUWS2_hots[,list(nhouses=length(unique(Keycode))),by=meterID]
 # 1:   mains      97
 # 2:     hot     103
 
+# look at Keycode
+sort(unique(DT_REUWS2_hots$Keycode))
+
+
 # get temperatures by house
 fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
 DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
 
 # Keep just the temperatures and Keycode
 names(DT_Combined_Hot_Water_Audit_Forms)
-DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 43, 44), with=FALSE]
+DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
 
 # shorten names
-setnames(DT_temps, 2:3, c( "T_cold","T_hot"))
+names(DT_temps)
+setnames(DT_temps, 4:9, c("N_adults", "N_teens", "N_children", "N_infants", "T_cold","T_hot"))
+# [1] "Keycode"    "City"       "State"      "N_adults"   "N_teens"    "N_children" "N_infants"  "T_cold"     "T_hot"     
+
+
+# make sure Keycodes upper case
+DT_temps[,Keycode:=toupper(Keycode)]
+
+# drop trailing H and H2
+DT_temps[, Keycode2:=str_match(Keycode,"[0-9S]*")]
+
+DT_temps[, list(unique(Keycode2)), by=Keycode]
+
+DT_REUWS2_hots[grepl("TBD",Keycode), list(unique(Keycode)), by=Keycode]
+
+sort(unique(DT_temps$Keycode))
+
+# convert N_adults field to numbers
+DT_temps[,N_adults:=as.numeric(str_extract(N_adults,"[1-9]") )] # missing is NA
+
+# if N_adults is NA so are others
+DT_temps[is.na(N_adults), `:=` (N_teens=NA, N_children=NA, N_infants=NA)]
+
+# convert blanks to zeros
+DT_temps[N_teens=='',N_teens:='0']
+DT_temps[N_children=='',N_children:='0']
+DT_temps[N_infants=='',N_infants:='0']
+
+# convert to numeric
+DT_temps[, c("N_teens", "N_children", "N_infants") := 
+           list(as.numeric(N_teens), as.numeric(N_children), as.numeric(N_infants) )]
+DT_temps[,N_teens:=as.numeric(N_teens)]
+DT_temps[,N_children:=as.numeric(N_children)]
+DT_temps[,N_infants:=as.numeric(N_infants)]
+
+
 str(DT_temps)
 
 # get number out of temperatures
@@ -118,12 +166,23 @@ DT_temps[str_detect(T_cold,"~"),T_cold2:=NA]
 DT_temps[str_detect(T_hot,"~"),T_hot2:=NA]
 
 # keep only where both temperatures were measured
-DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,T_cold=T_cold2, T_hot=T_hot2) ]
+DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,
+                                                            T_cold=as.numeric(T_cold2), T_hot=as.numeric(T_hot2),
+                                                            N_adults, N_teens, N_children, N_infants,
+                                                            City, State) 
+                     ]
 
-# make sure Keycodes match case
-sort(DT_temps$Keycode) # some have 'h' at end
+str(DT_temps)
+
+# make sure Keycodes upper case
+DT_temps[,Keycode:=toupper(Keycode)]
+
+# drop H 
+
 sort(unique(DT_REUWS2_hots$Keycode))
 DT_REUWS2_hots[Keycode=="13s103" | Keycode=="13S103", list(unique(Keycode), n=length(StartTime)), by=meterID ]
+
+
 
 =================================
 
