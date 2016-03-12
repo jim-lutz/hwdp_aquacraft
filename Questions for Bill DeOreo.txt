@@ -1,5 +1,11 @@
 Questions for Bill DeOreo
 
 2016-03-11
-"12S233" "12S606" "12S858" "13S214"  <- these Keycodes in tblHotTraces_REUWS2, 
-                                        but not tblMains_for_Hots
+these Keycodes in tblHotTraces_REUWS2, but not tblMains_for_Hots
+"12S1319" "12S233"  "12S606"  "12S858"  "13S192"  "13S214" 
+
+Keycode and SurveyID for Tacoma sites
+
+Keycode	SurveyID	City
+12sTBD	541541	San Antonio   <- Keycode # ?
+

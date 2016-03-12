@@ -8,6 +8,7 @@ fn_script = "loadtemp.R"
 # "Thu Mar 10 20:11:29 2016"    drop missing categories, email from Bill DeOreo, Thu, 10 Mar 2016 16:07:48 -0700
 # "Fri Mar 11 08:25:40 2016"    rename to loadtemp.R, load, clean, summarize & store data
 # "Fri Mar 11 12:39:55 2016"    check why more hots than mains
+# "Fri Mar 11 16:26:36 2016"    drop REUWS2 hots w/ no mains
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -140,6 +141,25 @@ rm(DT_REUWS2_hots)
 sort(unique(DT_events$Keycode))
 # 103 Keycodes
 
+# confirm same Keycodes hot & mains
+DT_events[,list(N_Keycodes = length(unique(Keycode))),by=meterID]
+#    meterID N_Keycodes
+# 1:   mains         97
+# 2:     hot        103
+
+Keycode.hot <- sort(unique(DT_events[meterID=="hot",]$Keycode)) 
+Keycode.mains <- sort(unique(DT_events[meterID=="mains",]$Keycode))
+
+l_mains.missing <- setdiff(Keycode.hot, Keycode.mains)
+# [1] "12S1319" "12S233"  "12S606"  "12S858"  "13S192"  "13S214"  <- these Keycodes in hot, but not mains events databases
+setdiff(Keycode.mains, Keycode.hot)
+# character(0)
+
+# drop missing Keycode
+DT_events <- DT_events[!(Keycode %in% l_mains.missing),]
+
+
+
 # get temperatures by house from Audit forms
 fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
 DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
@@ -213,17 +233,23 @@ DT_Keycodes <- merge(DT_temps[,list(Keycode, temps=TRUE)],DT_events[,list(Keycod
 # summarize
 DT_Keycodes[, list(N.Keycodes=length(unique(Keycode))),by=c("temps","events")]
 #    temps events N.Keycodes
-# 1:    NA   TRUE         28
-# 2:  TRUE   TRUE         75
-# 3:  TRUE     NA          6
+# 1:    NA   TRUE         26
+# 2:  TRUE   TRUE         71
+# 3:  TRUE     NA         10
 
 # merge DT_temps & DT_events, keep only if in DT_temps
 DT_temp_events <- merge(DT_temps, DT_events, by = "Keycode")
 
+# check to make sure temps and events are both covered
+DT_temp_events[is.na(T_cold), ]
+DT_temp_events[is.na(meterID), ]
+# Empty data.table (0 rows) of 18 cols: Keycode,T_cold,T_hot,N_adults,N_teens,N_children...
+
 str(DT_temp_events)
-# Classes ‘data.table’ and 'data.frame':	248914 obs. of  18 variables:
+# Classes ‘data.table’ and 'data.frame':	246806 obs. of  18 variables:
+
 length(unique(DT_temp_events$Keycode))
-# [1] 75
+# [1] 71
 
 # save the DT_temp_events data.table for later processing
 save(DT_temp_events,file=paste0(wd_data,"DT_temp_events.Rdata"))
@@ -258,30 +284,16 @@ DT_event.summary
 # save event summary table
 write.csv(DT_event.summary, file=paste0(wd_data,"event.summary.csv"),row.names = FALSE)
 #             type Ndraws.mains Ndraws.hot Nloads.mains Nloads.hot
-# 1:       Bathtub          127        141          127        141
-# 2: Clotheswasher         3451       1364          939        622
-# 3:    Dishwasher         1471       1545          452        475
-# 4:        Faucet        41251      40885        41251      40885
-# 5:          Leak        76199      61332        76199      61332
+# 1:       Bathtub          127        135          127        135
+# 2: Clotheswasher         3451       1307          939        573
+# 3:    Dishwasher         1471       1502          452        460
+# 4:        Faucet        41251      39753        41251      39753
+# 5:          Leak        76199      60556        76199      60556
 # 6:         Other         4381       1410         4381       1410
-# 7:        Shower         1407       1604         1407       1604
+# 7:        Shower         1407       1510         1407       1510
 # 8:        Toilet        11688          1        11688          1
 
-# more hot events than mains events, check Keycodes and dates?
-
-# confirm same Keycodes hot & mains
-DT_temp_events[,list(N_Keycodes = length(unique(Keycode))),by=meterID]
-#    meterID N_Keycodes
-# 1:   mains         71
-# 2:     hot         75
-
-Keycode.hot <- sort(unique(DT_temp_events[meterID=="hot",]$Keycode)) 
-Keycode.mains <- sort(unique(DT_temp_events[meterID=="mains",]$Keycode))
-
-setdiff(Keycode.hot, Keycode.mains)
-# [1] "12S233" "12S606" "12S858" "13S214"  <- these Keycodes in hot, but not mains
-setdiff(Keycode.mains, Keycode.hot)
-# character(0)
+# more hot events than mains events, Bathtub, Dishwasher, Shower
 
 
 
