@@ -293,97 +293,13 @@ write.csv(DT_event.summary, file=paste0(wd_data,"event.summary.csv"),row.names =
 # 7:        Shower         1407       1510         1407       1510
 # 8:        Toilet        11688          1        11688          1
 
-# more hot events than mains events, Bathtub, Dishwasher, Shower
+# more hot events than mains events, Bathtub, Dishwasher, Shower?
 
+# find earliest and latest dates
+DT_end.hot <- DT_temp_events[meterID=="hot", list(earliest.hot=min(start.time), latest.hot=max(start.time)), by=Keycode]
+DT_end.mains <- DT_temp_events[meterID=="mains", list(earliest.mains=min(start.time), latest.mains=max(start.time)), by=Keycode]
 
+DT_ends <- merge(DT_end.hot, DT_end.mains)
 
-
-
-
-DT_test <-DT_events[ SumAs=="Dishwasher", list(Keycode, start.time, Duration, Peak, Volume, Mode, meterID )][order(Keycode,start.time),]
-
-DT_test[, start.time.lag := shift(start.time), by=Keycode]
-
-DT_test[, start.time.diff := as.numeric( start.time - start.time.lag)]
-
-summary(DT_test$start.time.diff)
-head(sort(DT_test$start.time.diff, decreasing = TRUE),n=20)
-qplot(data=DT_test,x=start.time.diff, log="x")
-str(DT_test)
-
-=============================
-
-
-# see how many houses
-unique(DT_REUWS2_hots$Keycode)
-
-# check shower for alignment
-DT_REUWS2_hots[Keycode=='12S1003'&SumAs=='',]
-
-===================
-
-
-
-# remove unwanted events
-# DT_REUWS2_hots <- DT_REUWS2_hots[!(SumAs=='Leak'|SumAs=='Toilet'|SumAs=='Irrigation'|SumAs=='Other'),]
-
-# change StartTime to a POSIXct date-time object
-DT_HotCalEvents[,start.time := parse_date_time(StartTime,"%a %b %d %H:%M:%S  %Y", tz="America/Los Angeles")]
-# add separate fields for day of week and hour of day
-DT_HotCalEvents[, dow := lubridate::wday(start.time, label=TRUE, abbr=TRUE)]
-DT_HotCalEvents[, hrday := lubridate::hour(start.time)]
-
-# change Duration, Peak, Volume, Mode, ModeFreq to numbers
-DT_HotCalEvents[, Duration := as.numeric(Duration)]
-DT_HotCalEvents[, Peak := as.numeric(Peak)]
-DT_HotCalEvents[, Volume := as.numeric(Volume)]
-DT_HotCalEvents[, Mode := as.numeric(Mode)]
-DT_HotCalEvents[, ModeFreq := as.numeric(ModeFreq)]
-
-str(DT_HotCalEvents)
-
-
-
-
-
-
-
-
-
-
-
-
-====================
-
-# weight by NBr
-DT_NBr_weight <- DT_RASS_NBr[,list(NBr_weight = sum(sample_weight),NBr_sample=.N), by=NBr][order(NBr),]
-
-# save as csv
-write.csv(DT_NBr_weight, file=paste0(wd_data,"RASS_NBr_weights.csv"), row.names = FALSE)
-
-# weight by combination of NBr and code
-DT_code_weight <- DT_RASS_NBr[,list(code_weight = sum(sample_weight),
-                                    code_sample = .N          # count of number of houses sampled with that combination
-                                    ), by=c("NBr","code")][order(NBr,-code_weight)]
-
-# save as csv
-write.csv(DT_code_weight, file=paste0(wd_data,"RASS_code_weights.csv"), row.names = FALSE)
-
-# merge tables to get weights by NBr in same table
-DT_combin_weight <- merge(DT_code_weight,DT_NBr_weight,by="NBr", all=TRUE)[order(NBr,-code)]
-
-# find fraction of houses by NBr with each occupancy combination code. By weight
-DT_combin_weight[,f_NBr:= code_weight/NBr_weight]
-
-# keep occupancy combination codes that are >5% for each NBr
-DT_common_weight <- DT_combin_weight[f_NBr>0.05, ][order(NBr,-f_NBr)][, list(code, code_weight, code_sample, f_NBr, 
-                                                        NBr_weight=sum(code_weight)),
-                                                 by=NBr]
-
-# add equivalent number of days
-DT_common_weight[,code_days:=round(code_weight/NBr_weight * 365)][]
-
-
-# save as csv
-write.csv(DT_common_weight, file=paste0(wd_data,"RASS_common_weights.csv"), row.names = FALSE)
+DT_ends[, earliest.diff:=(earliest.mains-earliest.hot)][order(-earliest.diff)]
 
