@@ -9,6 +9,7 @@ fn_script = "loadtemp.R"
 # "Fri Mar 11 08:25:40 2016"    rename to loadtemp.R, load, clean, summarize & store data
 # "Fri Mar 11 12:39:55 2016"    check why more hots than mains
 # "Fri Mar 11 16:26:36 2016"    drop REUWS2 hots w/ no mains
+# "Mon Mar 14 11:43:38 2016"    chop days hot & mains that don't overlap
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -225,7 +226,7 @@ DT_temps <- DT_temps[!is.na(T_cold2) & !is.na(T_hot2), list(Keycode,
 str(DT_temps)
 # Classes ‘data.table’ and 'data.frame':	81 obs. of  9 variables:
 str(DT_events)
-#Classes ‘data.table’ and 'data.frame':	326536 obs. of  10 variables:
+# Classes ‘data.table’ and 'data.frame':	323146 obs. of  10 variables:
 
 # merge DT_temps & DT_events, only Keycode, keep all records to see which is missing from which
 DT_Keycodes <- merge(DT_temps[,list(Keycode, temps=TRUE)],DT_events[,list(Keycode, events=TRUE)], by="Keycode", all=TRUE)
@@ -296,10 +297,34 @@ write.csv(DT_event.summary, file=paste0(wd_data,"event.summary.csv"),row.names =
 # more hot events than mains events, Bathtub, Dishwasher, Shower?
 
 # find earliest and latest dates
-DT_end.hot <- DT_temp_events[meterID=="hot", list(earliest.hot=min(start.time), latest.hot=max(start.time)), by=Keycode]
-DT_end.mains <- DT_temp_events[meterID=="mains", list(earliest.mains=min(start.time), latest.mains=max(start.time)), by=Keycode]
+DT_ends <- DT_temp_events[, list(first.start=min(start.time), last.start=max(start.time)), by=c("Keycode","SumAs","meterID")][order(Keycode,SumAs)]
+
+# find number of types
+DT_ends[,list(nTypes=length(Keycode)),by=SumAs]
+
+# keep only the hot water related ones
+DT_ends <- subset(DT_ends, SumAs %in% c("Clotheswasher","Dishwasher","Faucet","Shower","Bathtub"))
+
+DT_ends[,list(nTypes=length(Keycode)),by=SumAs]
+
+
+names(DT_temp_events)
+keeps = c(1:7,8,11:16)
+DT_temp_events[,list(Keycode, T_cold, T_hot, N_adults, N_teens, N_children, N_infants, SumAs, 
+                    Duration, Peak, Volume, Mode, meterID, start.time)]
+
+
+DT_tem <- melt(DT_temp_events[,list(Keycode, start.time, meterID, SumAs)],id=1)
+
+dcast(DT_tem,Keycode ~ )
+
 
 DT_ends <- merge(DT_end.hot, DT_end.mains)
 
 DT_ends[, earliest.diff:=(earliest.mains-earliest.hot)][order(-earliest.diff)]
+DT_ends[, latest.diff:=(latest.mains-latest.hot)][order(-latest.diff)]
+
+# save event ends summary table
+write.csv(DT_ends, file=paste0(wd_data,"event.ends.csv"),row.names = FALSE)
+
 
