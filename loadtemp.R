@@ -10,6 +10,8 @@ fn_script = "loadtemp.R"
 # "Fri Mar 11 12:39:55 2016"    check why more hots than mains
 # "Fri Mar 11 16:26:36 2016"    drop REUWS2 hots w/ no mains
 # "Mon Mar 14 11:43:38 2016"    chop days hot & mains that don't overlap
+# "Mon Mar 14 16:41:56 2016"    need to find them first, 
+# "Tue Mar 15 11:54:59 2016"    fix missing Keycode with SurveyID
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -159,19 +161,28 @@ setdiff(Keycode.mains, Keycode.hot)
 # drop missing Keycode
 DT_events <- DT_events[!(Keycode %in% l_mains.missing),]
 
+# get Keycode and Survey ID
+fn_SurveyID_Keycode <- paste0(wd_Aquacraft,"SurveyID_Keycode.csv")
+DT_SurveyID_Keycode <- fread(fn_SurveyID_Keycode)
 
+# get Customer Surveys Demographics.csv
+fn_Customer_Surveys_Demographics.csv <- paste0(wd_Aquacraft,"Customer Surveys Demographics.csv")
+DT_Customer_Surveys_Demographics <- fread(fn_Customer_Surveys_Demographics.csv)
+
+# merge demograpics and keycode
+DT_Keycode_Demographics <- merge(DT_SurveyID_Keycode, DT_Customer_Surveys_Demographics, by="SurveyID")
 
 # get temperatures by house from Audit forms
 fn_Combined_Hot_Water_Audit_Forms <- paste0(wd_Aquacraft,"Combined Hot Water Audit Forms.csv")
 DT_Combined_Hot_Water_Audit_Forms <- fread(fn_Combined_Hot_Water_Audit_Forms)
 
-# Keep Keycode, location, demographics, & temps
+# Keep Keycode, demographics & temps
 names(DT_Combined_Hot_Water_Audit_Forms)
-DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
+DT_temps <- DT_Combined_Hot_Water_Audit_Forms[,c(1, 2, 3, 4, 33, 34, 35, 36, 43, 44), with=FALSE]
 
 # shorten names
 names(DT_temps)
-setnames(DT_temps, 4:9, c("N_adults", "N_teens", "N_children", "N_infants", "T_cold","T_hot"))
+setnames(DT_temps, 5:10, c("N_adults", "N_teens", "N_children", "N_infants", "T_cold","T_hot"))
 # [1] "Keycode"    "City"       "State"      "N_adults"   "N_teens"    "N_children" "N_infants"  "T_cold"     "T_hot"     
 
 # make sure Keycodes upper case
@@ -180,12 +191,40 @@ DT_temps[,Keycode:=toupper(Keycode)]
 # drop trailing H and H2
 DT_temps[, Keycode2:=str_match(Keycode,"[0-9S]*")]
 
-DT_temps[, list(unique(Keycode2)), by=Keycode]
+DT_temps[, list(Keycode2=unique(Keycode2), SurveyID=unique(SurveyID)), by=Keycode]
+
+# find missing Keycode
+DT_SurveyID_Keycode[SurveyID=='541541']
+# Empty data.table (0 rows) of 2 cols: SurveyID,Keycode
+# will have to drop it anyway
 
 # drop Keycode 12STBD
 DT_temps <- DT_temps[Keycode!='12STBD',]
 DT_temps[, Keycode:=Keycode2]
 DT_temps[, Keycode2:=NULL]
+
+# see which records are missing number of adults
+names(DT_temps)
+names(DT_Keycode_Demographics)
+DT_temps_missing_adults <- 
+  merge(DT_temps[N_adults=='',list(Keycode, T_cold, T_hot)],
+      DT_Keycode_Demographics[,list(Keycode,SurveyID,City,State,
+                                    N_adults   = survey_number_of_adults,
+                                    N_teens    = survey_number_of_teenagers,
+                                    N_children = survey_number_of_children,
+                                    N_infants  = survey_number_of_infants
+                                    )], by='Keycode')
+
+# reorder columns to match DT_temps
+setcolorder(DT_temps_missing_adults, c("Keycode", "SurveyID", "City", "State",
+                                       "N_adults", "N_teens", "N_children", "N_infants",
+                                       "T_cold", "T_hot") )
+
+# concatenate DT_temps missing & with adulta
+rbind(DT_temps[N_adults=='',],DT_temps_missing_adults)
+
+
+
 
 sort(unique(DT_temps$Keycode))
 
@@ -305,24 +344,31 @@ DT_ends[,list(nTypes=length(Keycode)),by=SumAs]
 # keep only the hot water related ones
 DT_ends <- subset(DT_ends, SumAs %in% c("Clotheswasher","Dishwasher","Faucet","Shower","Bathtub"))
 
-DT_ends[,list(nTypes=length(Keycode)),by=SumAs]
+# melt using Keycode as id
+DT_endsm <- melt(DT_ends, id=c("Keycode","SumAs", "meterID"))
+
+# combine meterID into variable
+DT_endsm2 <- DT_endsm[,list(Keycode, TypeDraw=SumAs, variable=paste(variable,meterID,sep='.'), value)]
 
 
-names(DT_temp_events)
-keeps = c(1:7,8,11:16)
-DT_temp_events[,list(Keycode, T_cold, T_hot, N_adults, N_teens, N_children, N_infants, SumAs, 
-                    Duration, Peak, Volume, Mode, meterID, start.time)]
+# now cast all 4 times on same record.
+DT_ends3 <- data.table(dcast(DT_endsm2, Keycode + TypeDraw ~ variable))
 
+# convert back to POSIXct
+DT_ends3[, `:=` (first.start.hot   =as.POSIXct(first.start.hot,   origin = origin, tz="America/Los Angeles"),
+                 first.start.mains =as.POSIXct(first.start.mains, origin = origin, tz="America/Los Angeles"),
+                 last.start.hot    =as.POSIXct(last.start.hot,    origin = origin, tz="America/Los Angeles"),
+                 last.start.mains  =as.POSIXct(last.start.mains,  origin = origin, tz="America/Los Angeles")
+                 )
+         ]
 
-DT_tem <- melt(DT_temp_events[,list(Keycode, start.time, meterID, SumAs)],id=1)
-
-dcast(DT_tem,Keycode ~ )
-
-
-DT_ends <- merge(DT_end.hot, DT_end.mains)
-
-DT_ends[, earliest.diff:=(earliest.mains-earliest.hot)][order(-earliest.diff)]
-DT_ends[, latest.diff:=(latest.mains-latest.hot)][order(-latest.diff)]
+# get the differences to see if overlap > one day
+DT_ends <- DT_ends3[, `:=` (diff.start = first.start.hot - first.start.mains,
+                            diff.last  = last.start.hot  - last.start.mains)
+                    ][, list(Keycode, TypeDraw, 
+                             first.start.mains, first.start.hot, diff.start, 
+                             last.start.mains, last.start.hot, diff.last
+                             )]
 
 # save event ends summary table
 write.csv(DT_ends, file=paste0(wd_data,"event.ends.csv"),row.names = FALSE)

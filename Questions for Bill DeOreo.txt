@@ -1,18 +1,24 @@
 Questions for Bill DeOreo
 
+2016-03-14
+  reload after fixing Keycode <-> SurveyID from Bill
+    in 'Combined Hot Water Audit Forms.csv'
+  drop as early as makes sense the non-hot water related events
+  review the total number of events by house to see if they makes sense
+  look at hot events without mains events
+
 2016-03-11
-these Keycodes in tblHotTraces_REUWS2, but not tblMains_for_Hots
-"12S1319" "12S233"  "12S606"  "12S858"  "13S192"  "13S214" 
+  these Keycodes in tblHotTraces_REUWS2, but not tblMains_for_Hots
+  "12S1319" "12S233"  "12S606"  "12S858"  "13S192"  "13S214" 
 Bill said they kept all the data sets they could even if the equivalent one was bad|missing. 2016-03-14
 
 
-Keycode and SurveyID for Tacoma sites? 
+  Keycode and SurveyID for Tacoma sites? 
 
-'REUWS 2 Customer Surveys (Anonymized, only 207 variables).xls' only has SurveyID for Tacoma, has answers to survey questions.
-'Combined Hot Water Audit Forms_anon.xls' only has Keycode for Tacoma, has temperatures
+  'REUWS 2 Customer Surveys (Anonymized, only 207 variables).xls' only has SurveyID for Tacoma, has answers to survey   questions.
+  'Combined Hot Water Audit Forms_anon.xls' only has Keycode for Tacoma, has temperatures
 
-
-Keycode	SurveyID	City
-12sTBD	541541	San Antonio   <- Keycode # ?
+  Keycode	SurveyID	City
+  12sTBD	541541	San Antonio   <- Keycode # ?
 
 Bill will send table join of Keycode and SurveyID for REUWS2_for_Hots, 2016-03-14

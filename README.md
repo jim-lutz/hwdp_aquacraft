@@ -15,6 +15,7 @@ loads, cleans and summarizes data from hot houses in REUWS2
           Combined Hot Water Audit Forms.csv
   output: DT_temp_events.Rdata
           event.summary.csv
+          event.ends.csv        # first and last draw by type & Keycode to search for non overlap hot & mains
           
           
   
