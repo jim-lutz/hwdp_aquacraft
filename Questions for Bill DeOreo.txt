@@ -1,5 +1,12 @@
 Questions for Bill DeOreo
 
+2016-03-18
+  why measure temps in houses not events
+   "12S233" "12S235" "12S403" "12S485" "12S606" "12S710" "12S858" "13S127" "13S138" "13S214"
+
+2016-03-15
+  why so many fraction of hot faucets > 100%?
+
 2016-03-14
   reload after fixing Keycode <-> SurveyID from Bill
     in 'Combined Hot Water Audit Forms.csv'

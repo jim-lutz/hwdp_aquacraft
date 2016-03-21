@@ -135,3 +135,9 @@ library( tidyr)
 
 logwarn(' tidyr loaded')
 
+# # work with  xlsx
+# if(!require( xlsx)){install.packages("xlsx")}
+# library( xlsx)
+# 
+# logwarn(' xlsx loaded')
+
