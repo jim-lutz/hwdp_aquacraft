@@ -2,6 +2,7 @@ fn_script = "synchronize_events.R"
 # synchronize events in Aquacraft hot and mains data set
 
 # Jim Lutz  "Mon Mar 21 16:55:52 2016"
+# "Fri Mar 25 08:26:17 2016"    repurpose earlier plotting functions for hot vs mains 
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -9,8 +10,9 @@ source("setup.R")
 # set the working directory names 
 source("setup_wd.R")
 
-# load useful functions (probably don't need this.)
-source("functions.R")
+# load useful functions 
+source("functions.R") # (probably don't need this.)
+source("plotfunctions.R")
 
 # get DT_temp_events.Rdata
 fn_DT_temp_events <- paste0(wd_data,"DT_temp_events.Rdata")
@@ -62,6 +64,17 @@ DT_hot_mains[][order(-diff)]
 # look at one keycode that doesn't match
 DT_DW_events[Keycode=="13S145"]
 # can flag dubious records by hand then drop
+
+# try plotting hot & mains draws as red & blue
+source("functions.R")
+rectangularize(DT_DW_events)
+str(DT_DW_events)
+
+
+
+
+
+
 
 # add record ID to DT_DW_events to make records easy to flag
 DT_DW_events[, recordID:=seq.int(1,.N)]
