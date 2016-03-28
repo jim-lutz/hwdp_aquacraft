@@ -12,7 +12,7 @@ source("setup.R")
 source("setup_wd.R")
 
 # load useful functions 
-source("functions.R") # (probably don't need this.)
+source("functions.R") 
 # source("plotfunctions.R") # add as needed
 
 # get DT_temp_events.Rdata
@@ -41,6 +41,7 @@ DT_loads[,draw_load:=n.draws/n.loads][order(draw_load)]
 
 qplot(data=DT_loads[order(draw_load)], x=draw_load)
 
+
 # see about combining adjacent lines
 # key by Keycode and meterID
 setkeyv(DT_DW_events,c("Keycode","start.time"))
@@ -68,46 +69,15 @@ DT_DW_events[Keycode=="13S145"]
 # try plotting hot & mains draws as red & blue
 # make each event a rectangle
 rectangularize(DT_DW_events)
-
-# testing chop.merge()
-DT_A <- DT_DW_events[Keycode=="13S145" & meterID=="hot",]
-DT_B <- DT_DW_events[Keycode=="13S145" & meterID=="mains",]
 str(DT_DW_events)
 DT_DW_events
 
+# chop.merge() on test house
+DT_bins <- chop.merge(DT_DW_events[Keycode=="13S145" & meterID=="hot",],
+                      DT_DW_events[Keycode=="13S145" & meterID=="mains",])
 
+tables()
+DT_bins
 
-
-
-
-# add record ID to DT_DW_events to make records easy to flag
-DT_DW_events[, recordID:=seq.int(1,.N)]
-
-DT_DW_events[Keycode=="13S145"]
-# add 2294 to 2292, drop 2294
-
-# add 2301 to 2299, drop 2301
-DT_DW_events[recordID==2299]$start.time
-# [1] "2013-01-23 17:03:58 America"
-DT_DW_events[recordID==2299]$start.time+seconds(110)
-# [1] "2013-01-23 17:05:48 America"
-DT_DW_events[recordID==2301]$start.time
-# [1] "2013-01-23 17:05:48 America"
-
-2345 to 
-
-# lag start.time Duration and Volume
-DT_DW_events[, `:=` (start.time.hot = shift(start.time),
-                     Duration.hot   = shift(Duration),
-                     Volume.hot   = shift(Volume)), 
-             by=Keycode]
-
-DT_DW_events[Keycode=="12S598"]
-
-# see how the events match up
-with(DT_temp_events[],table(SumAs, CountAs, useNA = "ifany"))
-
-
-DT_DW_events[Keycode=="12S112",][order(start.time)]
 
 
