@@ -1,4 +1,3 @@
-
 # setup.R
 # make sure any needed packages are loaded
 # Jim Lutz  Mon Jan  6 10:20:41 CST 2014
@@ -23,7 +22,20 @@
 # /home/jiml/R/packages 
 # see: http://www.r-bloggers.com/installing-r-packages/
 
-
+# clean up leftovers before starting
+# clear all the objects except fn_script
+l_obj=ls(all=TRUE)
+l_obj = c(l_obj, "l_obj") # be sure to include l_obj
+rm(list = l_obj[l_obj != "fn_script"])
+# clear the plots
+if(!is.null(dev.list())){
+  dev.off(dev.list()["RStudioGD"])
+}
+# clear history
+cat("", file = "nohistory")
+loadhistory("nohistory")
+# clear the console
+cat("\014")
 
 # only works if have internet access
 update.packages(checkBuilt=TRUE)

@@ -3,6 +3,7 @@ fn_script = "synchronize_events.R"
 
 # Jim Lutz  "Mon Mar 21 16:55:52 2016"
 # "Fri Mar 25 08:26:17 2016"    repurpose earlier plotting functions for hot vs mains 
+# "Mon Mar 28 10:41:31 2016"    still working on plotting functions
 
 # make sure all packages loaded and start logging
 source("setup.R")
@@ -12,7 +13,7 @@ source("setup_wd.R")
 
 # load useful functions 
 source("functions.R") # (probably don't need this.)
-source("plotfunctions.R")
+# source("plotfunctions.R") # add as needed
 
 # get DT_temp_events.Rdata
 fn_DT_temp_events <- paste0(wd_data,"DT_temp_events.Rdata")
@@ -36,10 +37,9 @@ DT_loads <- DT_DW_events[,list(n.loads=length(Keycode[CountAs=="Dishwasher"]),
 
 # number of draws per load
 DT_loads[,draw_load:=n.draws/n.loads][order(draw_load)]
-
+# 1 up to 11
 
 qplot(data=DT_loads[order(draw_load)], x=draw_load)
-
 
 # see about combining adjacent lines
 # key by Keycode and meterID
@@ -66,10 +66,14 @@ DT_DW_events[Keycode=="13S145"]
 # can flag dubious records by hand then drop
 
 # try plotting hot & mains draws as red & blue
-source("functions.R")
+# make each event a rectangle
 rectangularize(DT_DW_events)
-str(DT_DW_events)
 
+# testing chop.merge()
+DT_A <- DT_DW_events[Keycode=="13S145" & meterID=="hot",]
+DT_B <- DT_DW_events[Keycode=="13S145" & meterID=="mains",]
+str(DT_DW_events)
+DT_DW_events
 
 
 
