@@ -19,8 +19,6 @@ rectangularize <- function(DT_AQ ) {
 logwarn('loaded rectangularize()')
 
 
-
-
 chop.merge <- function(DT_A=DT_A, DT_B=DT_B) {
   # merges two data.tables of values by irregular timesteps with different starts and stops
   # each data.table has fields start.time, end.time, and flow for the same house.
@@ -90,4 +88,25 @@ chop.merge <- function(DT_A=DT_A, DT_B=DT_B) {
   
 } # end of function
 logwarn('loaded chop.merge()')
+
+
+wrap.chop.merge <- function(k, .DT_DW_events=DT_DW_events) {
+  # wrapper function for chop.merge()
+  # runs chop.merge on one house in DT_DW_events
+  # k is the keycode for the desired house.
+
+  DT_bins <- chop.merge(.DT_DW_events[Keycode==k & meterID=="hot",],
+                        .DT_DW_events[Keycode==k & meterID=="mains",])
+  
+  # change column names
+  setnames(DT_bins, old = c("drawA",   "flowA",   "drawB",     "flowB"),
+                    new = c("draw.hot","flow.hot","draw.mains","flow.mains")
+           )
+  
+  # add Keycode
+  DT_bins[, Keycode:=k]
+  
+  return(DT_bins)
+             
+}
 

@@ -56,9 +56,9 @@ DT_hot_mains <- DT_DW_events[,list(n.hot  =length(Keycode[meterID=="hot"]   ),
 DT_hot_mains[, diff:= n.mains-n.hot][order(-diff)]
 DT_hot_mains[abs(diff)>3,]
 
-# keep only those keycodes where diff <= 3
-DT_hot_mains <- DT_hot_mains[abs(diff)<=3,]
-# 48
+# keep only those keycodes where diff < 10
+DT_hot_mains <- DT_hot_mains[abs(diff)<10,]
+# 54
 
 DT_hot_mains[][order(-diff)]
 
@@ -75,8 +75,19 @@ DT_DW_events
 # chop.merge() on test house
 DT_bins <- chop.merge(DT_DW_events[Keycode=="13S145" & meterID=="hot",],
                       DT_DW_events[Keycode=="13S145" & meterID=="mains",])
+DT_bins2 <- wrap.chop.merge(k="13S145")
+
+# try it on a list of all the houses with reasonable DW events
+d_DW <- data.frame(Keycode=DT_hot_mains$Keycode)
+str(d_DW)
+DF_DW_bins <- ddply(.data = d_DW, .(Keycode), .fun = wrap.chop.merge(k=Keycode), .progress = "text", .inform = TRUE)
+
+
+  
 
 tables()
+
+
 DT_bins
 
 
